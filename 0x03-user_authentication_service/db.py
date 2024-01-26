@@ -5,6 +5,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
+from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.exc import InvalidRequestError
 
 from user import Base, User
 
@@ -16,7 +18,7 @@ class DB:
     def __init__(self) -> None:
         """Initialize a new DB instance
         """
-        self._engine = create_engine("sqlite:///a.db", echo=True)
+        self._engine = create_engine("sqlite:///a.db", echo=False)
         Base.metadata.drop_all(self._engine)
         Base.metadata.create_all(self._engine)
         self.__session = None
@@ -36,3 +38,33 @@ class DB:
         self._session.add(new_user)
         self._session.commit()
         return new_user
+
+    def find_user_by(self, **kwargs):
+        """
+        method takes in arbitrary keyword arguments and returns
+        the first row found in the users table as filtered by
+        the method’s input arguments.
+        """
+        user_attributes = ['email', 'id', 'hashed_password', 'reset_token']
+        for key in kwargs.keys():
+            if key not in user_attributes:
+                raise InvalidRequestError
+        output = self._session.query(User).filter_by(**kwargs).first()
+        if output is None:
+            raise NoResultFound
+        return output
+
+    def update_user(self, user_id: int, **kwargs) -> None:
+        """
+        method will use find_user_by to locate the user to update,
+        then will update the user’s attributes as passed in the
+        method’s arguments then commit changes to the database.
+        """
+        user = self.find_user_by(id=user_id)
+        user_attributes = ['email', 'id', 'hashed_password', 'reset_token']
+        for key, value in kwargs.items():
+            if key not in user_attributes:
+                raise ValueError
+            else:
+                user.key = value
+        self._session.commit()
