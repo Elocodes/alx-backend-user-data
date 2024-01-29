@@ -22,6 +22,7 @@ def _hash_password(password: str) -> str:
     hashh = bcrypt.hashpw(bytess, salt)
     return hashh
 
+
 def _generate_uuid() -> str:
     """ return a str representation of a new id """
     return str(uuid.uuid4())
@@ -58,3 +59,13 @@ class Auth:
         except Exception:
             pass
         return False
+
+    def create_session(self, email: str) -> str:
+        """ assign new session id whenever user logs in """
+        session_id = _generate_uuid()
+        try:
+            user = self._db.find_user_by(email=email)
+            self._db.update_user(user.id, session_id=session_id)
+            return session_id
+        except NoResultFound:
+            return None
